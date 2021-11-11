@@ -2,6 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 
 	export let gifs = [];
+	export let walletAddress;
 	export let createAccount;
 	let gif_link = '';
 
@@ -10,6 +11,7 @@
 		dispatch('gifSubmitted', gif_link);
 		gif_link = '';
 	};
+	const deleteHandler = (idx) => () => dispatch('gifRemoved', idx);
 </script>
 
 <div class="connected-container">
@@ -19,10 +21,16 @@
 	</form>
 	{#if gifs != null}
 		<div class="gif-grid">
-			{#each gifs as gif}
+			{#each gifs as gif, idx}
 				<div class="gif-item" key={gif}>
 					<img src={gif.gifLink} alt={gif} />
-					<p>Submitted by {gif.userAddress.toString()}</p>
+					{#if gif.userAddress.toString() == walletAddress}
+						<button class="cta-button submit-gif-button" on:click={deleteHandler(idx)}
+							>Remove this gif</button
+						>
+					{:else}
+						<p>Submitted by {gif.userAddress.toString()}</p>
+					{/if}
 				</div>
 			{/each}
 		</div>

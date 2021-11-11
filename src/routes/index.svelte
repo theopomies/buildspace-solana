@@ -8,7 +8,7 @@
 	import { onMount } from 'svelte';
 
 	import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-	import { Program, Provider, web3 } from '@project-serum/anchor';
+	import { BN, Program, Provider, web3 } from '@project-serum/anchor';
 	import idl from '$lib/idl.json';
 	const { SystemProgram } = web3;
 	import kp from '$lib/keypair.json';
@@ -60,8 +60,8 @@
 				if (solana.isPhantom) {
 					console.log('Phantom wallet found!');
 					const response = await solana.connect({ onlyIfTrusted: true });
-					address = response.publicKey.toString();
-					console.log('Connected with Public Key:', address);
+					walletAddress = response.publicKey.toString();
+					console.log('Connected with Public Key:', walletAddress);
 				}
 			} else {
 				alert('Solana object not found! Get a Phantom Wallet 👻');
@@ -115,17 +115,37 @@
 		}
 	};
 
+	const removeGif = async (value) => {
+		console.log('Gif id to remove: ', value);
+		try {
+			const provider = getProvider();
+			const program = new Program(idl, programID, provider);
+
+			await program.rpc.rmGif(new BN(value), {
+				accounts: {
+					baseAccount: baseAccount.publicKey,
+					user: provider.wallet.publicKey
+				}
+			});
+			console.log('GIF sucesfully removed from the program', value);
+
+			gifs = await getGifList();
+		} catch (error) {
+			console.log('Error removing GIF:', error);
+		}
+	};
+
 	onMount(async () => {
 		const { Buffer } = await import('buffer');
 		window.Buffer = Buffer;
 		checkIfWalletIsConnected;
 	});
 
-	let address = null;
+	let walletAddress = null;
 
 	let gifs = null;
 	$: {
-		if (address != null) {
+		if (walletAddress != null) {
 			console.log('Fetching GIF list...');
 			getGifList().then((res) => (gifs = res));
 		}
@@ -138,21 +158,27 @@
 
 <main>
 	<div class="App">
-		<div class={address == null ? 'container' : 'auth-container'}>
+		<div class={walletAddress == null ? 'container' : 'auth-container'}>
 			<div class="header-container">
 				<p class="header">{TITLE}</p>
 				<p class="sub-text">Store your favorite SquidGifs on Solana!</p>
 				<br />
-				{#if address == null}
-					<ConnectWalletButton on:connect={(e) => (address = e.detail)} />
+				{#if walletAddress == null}
+					<ConnectWalletButton on:connect={(e) => (walletAddress = e.detail)} />
 				{:else}
 					<br />
-					<p>Connected as {address}</p>
+					<p>Connected as {walletAddress}</p>
 					<br />
 					<ConnectedContainer
 						{gifs}
+						{walletAddress}
 						createAccount={createGifAccount}
-						on:gifSubmitted={(event) => {sendGif(event.detail)}}
+						on:gifSubmitted={(event) => {
+							sendGif(event.detail);
+						}}
+						on:gifRemoved={(event) => {
+							removeGif(event.detail);
+						}}
 					/>
 				{/if}
 			</div>
